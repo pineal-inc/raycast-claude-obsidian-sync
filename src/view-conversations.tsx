@@ -1,13 +1,6 @@
-import { List, ActionPanel, Action, getPreferenceValues, Icon } from "@raycast/api";
+import { List, ActionPanel, Action, Icon } from "@raycast/api";
 import { useState, useEffect } from "react";
 import { getRecentSessions, ClaudeSession, ClaudeMessage } from "./utils/claude-parser";
-import * as path from "path";
-
-interface Preferences {
-  obsidianVaultPath: string;
-  claudeProjectPath: string;
-  autoGitCommit: boolean;
-}
 
 function formatTime(date: Date): string {
   return date.toLocaleTimeString("ja-JP", {
@@ -31,7 +24,7 @@ function truncate(text: string, maxLength: number): string {
 
 function MessageDetail({ message }: { message: ClaudeMessage }) {
   const icon = message.type === "user" ? Icon.Person : Icon.Stars;
-  const title = message.type === "user" ? "ユーザー" : "Claude";
+  const title = message.type === "user" ? "User" : "Claude";
 
   return (
     <List.Item
@@ -52,8 +45,7 @@ function MessageDetail({ message }: { message: ClaudeMessage }) {
 }
 
 function SessionSection({ session }: { session: ClaudeSession }) {
-  const sessionName = path.basename(path.dirname(session.filePath));
-  const title = `${formatDate(session.lastModified)} - ${sessionName}`;
+  const title = `${formatDate(session.lastModified)} - ${session.projectName}`;
 
   return (
     <List.Section title={title} subtitle={`${session.messages.length} messages`}>
@@ -65,13 +57,11 @@ function SessionSection({ session }: { session: ClaudeSession }) {
 }
 
 export default function ViewConversations() {
-  const preferences = getPreferenceValues<Preferences>();
   const [sessions, setSessions] = useState<ClaudeSession[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const projectPath = preferences.claudeProjectPath || undefined;
-    const recentSessions = getRecentSessions(projectPath, 5);
+    const recentSessions = getRecentSessions(5);
     setSessions(recentSessions);
     setIsLoading(false);
   }, []);
