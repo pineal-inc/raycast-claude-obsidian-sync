@@ -1,7 +1,7 @@
 {
-  "name": "claude-obsidian-sync",
-  "title": "Claude Obsidian Sync",
-  "description": "Sync Claude Code conversations to Obsidian automatically",
+  "name": "claude-conversation-sync",
+  "title": "Claude Conversation Sync",
+  "description": "Sync Claude Code conversations to a folder, organized by date and project",
   "icon": "command-icon.png",
   "author": "pineal-inc",
   "categories": ["Productivity", "Developer Tools"],
@@ -17,7 +17,7 @@
     {
       "name": "sync-now",
       "title": "Sync Claude Conversations",
-      "description": "Manually sync Claude Code conversations to Obsidian",
+      "description": "Manually sync Claude Code conversations",
       "mode": "no-view"
     },
     {
@@ -29,27 +29,11 @@
   ],
   "preferences": [
     {
-      "name": "obsidianVaultPath",
-      "title": "Obsidian Vault Path",
-      "description": "Path to your Obsidian vault's claude folder (e.g., ~/obsidian/claude)",
+      "name": "outputPath",
+      "title": "Output Folder",
+      "description": "Path to save conversations (e.g., ~/Documents/claude-logs)",
       "type": "directory",
       "required": true
-    },
-    {
-      "name": "claudeProjectPath",
-      "title": "Claude Project Path",
-      "description": "Path to Claude Code project directory (e.g., ~/.claude/projects/-Users-username-project)",
-      "type": "directory",
-      "required": false,
-      "default": ""
-    },
-    {
-      "name": "autoGitCommit",
-      "title": "Auto Git Commit",
-      "description": "Automatically commit changes to git after sync",
-      "type": "checkbox",
-      "default": true,
-      "required": false
     }
   ],
   "dependencies": {

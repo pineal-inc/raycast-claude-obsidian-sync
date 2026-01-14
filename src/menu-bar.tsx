@@ -1,18 +1,16 @@
 import { MenuBarExtra, getPreferenceValues, showHUD, LaunchType, launchCommand, Icon } from "@raycast/api";
 import { useEffect, useState } from "react";
 import { findSessionFiles, parseSessionFile } from "./utils/claude-parser";
-import { syncToObsidian } from "./utils/obsidian-sync";
+import { syncToFolder } from "./utils/sync";
 
 interface Preferences {
-  obsidianVaultPath: string;
-  claudeProjectPath: string;
-  autoGitCommit: boolean;
+  outputPath: string;
 }
 
 interface SyncStatus {
   lastSync: Date | null;
   messageCount: number;
-  issyncing: boolean;
+  isSyncing: boolean;
   error?: string;
 }
 
@@ -21,33 +19,31 @@ export default function MenuBar() {
   const [status, setStatus] = useState<SyncStatus>({
     lastSync: null,
     messageCount: 0,
-    issyncing: false,
+    isSyncing: false,
   });
 
   async function performSync() {
-    setStatus((prev) => ({ ...prev, issyncing: true }));
+    setStatus((prev) => ({ ...prev, isSyncing: true }));
 
     try {
-      const projectPath = preferences.claudeProjectPath || undefined;
-      const sessionFiles = findSessionFiles(projectPath);
+      const sessionFiles = findSessionFiles();
 
       if (sessionFiles.length === 0) {
         setStatus({
           lastSync: new Date(),
           messageCount: 0,
-          issyncing: false,
+          isSyncing: false,
         });
         return;
       }
 
       let totalMessages = 0;
-      for (const sessionFile of sessionFiles.slice(0, 3)) {
+      for (const sessionFile of sessionFiles.slice(0, 5)) {
         const messages = parseSessionFile(sessionFile);
-        const result = syncToObsidian(
+        const result = syncToFolder(
           sessionFile,
           messages,
-          preferences.obsidianVaultPath,
-          preferences.autoGitCommit
+          preferences.outputPath
         );
         if (result.success) {
           totalMessages += result.messagesAdded;
@@ -57,12 +53,12 @@ export default function MenuBar() {
       setStatus({
         lastSync: new Date(),
         messageCount: totalMessages,
-        issyncing: false,
+        isSyncing: false,
       });
     } catch (error) {
       setStatus((prev) => ({
         ...prev,
-        issyncing: false,
+        isSyncing: false,
         error: error instanceof Error ? error.message : "Unknown error",
       }));
     }
@@ -78,11 +74,11 @@ export default function MenuBar() {
     return date.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
   };
 
-  const icon = status.issyncing ? Icon.ArrowClockwise : Icon.Stars;
-  const title = status.issyncing ? "Syncing..." : "";
+  const icon = status.isSyncing ? Icon.ArrowClockwise : Icon.Stars;
+  const title = status.isSyncing ? "Syncing..." : "";
 
   return (
-    <MenuBarExtra icon={icon} title={title} tooltip="Claude Obsidian Sync">
+    <MenuBarExtra icon={icon} title={title} tooltip="Claude Sync">
       <MenuBarExtra.Section title="Status">
         <MenuBarExtra.Item
           title={`Last Sync: ${formatTime(status.lastSync)}`}

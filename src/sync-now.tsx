@@ -1,19 +1,16 @@
 import { showHUD, getPreferenceValues, showToast, Toast } from "@raycast/api";
 import { findSessionFiles, parseSessionFile } from "./utils/claude-parser";
-import { syncToObsidian } from "./utils/obsidian-sync";
+import { syncToFolder } from "./utils/sync";
 
 interface Preferences {
-  obsidianVaultPath: string;
-  claudeProjectPath: string;
-  autoGitCommit: boolean;
+  outputPath: string;
 }
 
 export default async function Command() {
   const preferences = getPreferenceValues<Preferences>();
 
   try {
-    const projectPath = preferences.claudeProjectPath || undefined;
-    const sessionFiles = findSessionFiles(projectPath);
+    const sessionFiles = findSessionFiles();
 
     if (sessionFiles.length === 0) {
       await showHUD("No active Claude sessions found");
@@ -21,25 +18,24 @@ export default async function Command() {
     }
 
     let totalMessages = 0;
-    let syncedFiles = 0;
+    let syncedProjects = 0;
 
-    for (const sessionFile of sessionFiles.slice(0, 3)) {
+    for (const sessionFile of sessionFiles.slice(0, 5)) {
       const messages = parseSessionFile(sessionFile);
-      const result = syncToObsidian(
+      const result = syncToFolder(
         sessionFile,
         messages,
-        preferences.obsidianVaultPath,
-        preferences.autoGitCommit
+        preferences.outputPath
       );
 
       if (result.success && result.messagesAdded > 0) {
         totalMessages += result.messagesAdded;
-        syncedFiles++;
+        syncedProjects++;
       }
     }
 
     if (totalMessages > 0) {
-      await showHUD(`Synced ${totalMessages} messages from ${syncedFiles} session(s)`);
+      await showHUD(`Synced ${totalMessages} messages from ${syncedProjects} project(s)`);
     } else {
       await showHUD("No new messages to sync");
     }

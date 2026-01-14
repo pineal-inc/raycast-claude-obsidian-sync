@@ -1,6 +1,17 @@
-# Claude Obsidian Sync
+# Claude Conversation Sync
 
-Raycast extension to automatically sync Claude Code conversations to Obsidian.
+Raycast extension to sync Claude Code conversations to a folder, organized by date and project.
+
+## Output Structure
+
+```
+output-folder/
+  2026-01-14/
+    project-name-1.md
+    project-name-2.md
+  2026-01-15/
+    project-name-1.md
+```
 
 ## Features
 
@@ -26,31 +37,35 @@ Set these preferences in Raycast:
 
 | Preference | Description | Required |
 |------------|-------------|----------|
-| Obsidian Vault Path | Path to your Obsidian vault's claude folder (e.g., `~/obsidian/claude`) | Yes |
-| Claude Project Path | Path to specific Claude Code project directory | No |
-| Auto Git Commit | Automatically commit changes after sync | No (default: true) |
+| Output Folder | Path to save conversations (e.g., `~/Documents/claude-logs`) | Yes |
 
 ## How It Works
 
 1. The extension monitors `~/.claude/projects/` for active session files
 2. Parses JSONL session files to extract user and assistant messages
 3. Filters out system messages and noise
-4. Saves conversations to Obsidian as daily markdown files (e.g., `2026年1月14日.md`)
-5. Optionally commits changes to git
+4. Creates date-based folders (e.g., `2026-01-14/`)
+5. Saves conversations as project-based markdown files (e.g., `my-project.md`)
 
 ## Output Format
 
+`2026-01-14/my-project.md`:
+
 ```markdown
-# 2026年1月14日 Claudeとの会話
+# 2026年1月14日 - my-project
 
-**ユーザー**: Hello, Claude!
+## User
 
-**Claude**: Hello! How can I help you today?
+Hello, Claude!
+
+---
+
+## Claude
+
+Hello! How can I help you today?
+
+---
 ```
-
-## Credits
-
-Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on syncing Claude Code conversations to Obsidian.
 
 ## License
 
