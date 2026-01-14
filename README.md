@@ -1,71 +1,72 @@
-# Claude Conversation Sync
+# Claude Log Sync
 
-Raycast extension to sync Claude Code conversations to a folder, organized by date and project.
-
-## Output Structure
-
-```
-output-folder/
-  2026-01-14/
-    project-name-1.md
-    project-name-2.md
-  2026-01-15/
-    project-name-1.md
-```
-
-## Features
-
-- **Menu Bar Status**: Shows sync status and runs background sync every minute
-- **Manual Sync**: Instantly sync conversations with a command
-- **View Conversations**: Browse recent Claude Code conversations directly in Raycast
+CLI tool to export Claude Code conversations to Markdown files.
 
 ## Installation
 
-1. Clone this repository
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-3. Import to Raycast:
-   ```bash
-   npm run dev
-   ```
+```bash
+# Clone and install
+git clone https://github.com/your-username/claude-log-sync.git
+cd claude-log-sync
+npm install
+npm run build
 
-## Configuration
+# Or install globally
+npm install -g .
+```
 
-Set these preferences in Raycast:
+## Usage
 
-| Preference | Description | Required |
-|------------|-------------|----------|
-| Output Folder | Path to save conversations (e.g., `~/Documents/claude-logs`) | Yes |
+```bash
+# Basic usage
+claude-log-sync ~/logs/claude
+
+# With specific project
+claude-log-sync ~/logs/claude --project ~/.claude/projects/my-project
+
+# Without auto git commit
+claude-log-sync ~/logs/claude --no-git
+```
+
+### Options
+
+| Option | Description |
+|--------|-------------|
+| `-o, --output <path>` | Output directory for markdown files |
+| `-p, --project <path>` | Path to specific Claude Code project directory |
+| `--no-git` | Disable automatic git commit after sync |
+| `-h, --help` | Show help message |
 
 ## How It Works
 
-1. The extension monitors `~/.claude/projects/` for active session files
+1. Monitors `~/.claude/projects/` for active session files
 2. Parses JSONL session files to extract user and assistant messages
 3. Filters out system messages and noise
-4. Creates date-based folders (e.g., `2026-01-14/`)
-5. Saves conversations as project-based markdown files (e.g., `my-project.md`)
+4. Saves conversations as daily markdown files (e.g., `2026年1月14日.md`)
+5. Optionally commits changes to git
 
 ## Output Format
 
-`2026-01-14/my-project.md`:
-
 ```markdown
-# 2026年1月14日 - my-project
+# 2026年1月14日 Claudeとの会話
 
-## User
+**ユーザー**: Hello, Claude!
 
-Hello, Claude!
-
----
-
-## Claude
-
-Hello! How can I help you today?
-
----
+**Claude**: Hello! How can I help you today?
 ```
+
+## Automation
+
+You can set up a cron job or launchd to run this periodically:
+
+```bash
+# Run every minute (crontab -e)
+* * * * * /path/to/claude-log-sync ~/logs/claude
+```
+
+## Credits
+
+Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on syncing Claude Code conversations.
 
 ## License
 

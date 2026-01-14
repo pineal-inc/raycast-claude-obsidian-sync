@@ -1,5 +1,6 @@
 import * as fs from "fs";
 import * as path from "path";
+import { execSync } from "child_process";
 import { ClaudeMessage, getTodayMessages } from "./claude-parser";
 
 export interface SyncResult {
@@ -41,13 +42,6 @@ export function saveSyncState(outputDir: string, state: SyncState): void {
   }
 }
 
-function formatDateFolder(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  return `${year}-${month}-${day}`;
-}
-
 function formatDateJapanese(date: Date): string {
   const year = date.getFullYear();
   const month = date.getMonth() + 1;
@@ -55,69 +49,31 @@ function formatDateJapanese(date: Date): string {
   return `${year}年${month}月${day}日`;
 }
 
-function extractProjectName(sessionFilePath: string): string {
-  // Session path looks like: ~/.claude/projects/-Users-username-project-name/session-id.jsonl
-  // Extract the project part
-  const projectDir = path.dirname(sessionFilePath);
-  const projectHash = path.basename(projectDir);
-
-  // Convert -Users-username-project-name to a readable name
-  // Remove the leading user path parts and clean up
-  const parts = projectHash.split("-").filter((p) => p.length > 0);
-
-  // Skip common path prefixes like "Users", username
-  let startIndex = 0;
-  for (let i = 0; i < parts.length; i++) {
-    if (parts[i].toLowerCase() === "users" || i < 2) {
-      startIndex = i + 1;
-    } else {
-      break;
-    }
-  }
-
-  const projectParts = parts.slice(startIndex);
-  if (projectParts.length === 0) {
-    return "default";
-  }
-
-  return projectParts.join("-").toLowerCase() || "default";
-}
-
-function formatMessagesToMarkdown(messages: ClaudeMessage[], projectName: string): string {
-  const today = formatDateJapanese(new Date());
-  const lines: string[] = [`# ${today} - ${projectName}`, ""];
+function formatMessagesToMarkdown(messages: ClaudeMessage[]): string {
+  const lines: string[] = [];
 
   for (const msg of messages) {
     if (msg.type === "user") {
-      lines.push(`## User`);
-      lines.push("");
-      lines.push(msg.content);
+      lines.push(`**ユーザー**: ${msg.content}`);
     } else {
-      lines.push(`## Claude`);
-      lines.push("");
-      lines.push(msg.content);
+      lines.push(`**Claude**: ${msg.content}`);
     }
-    lines.push("");
-    lines.push("---");
     lines.push("");
   }
 
   return lines.join("\n");
 }
 
-export function syncToFolder(
+export function syncToOutput(
   sessionFilePath: string,
   allMessages: ClaudeMessage[],
-  outputDir: string
+  outputDir: string,
+  autoGitCommit: boolean
 ): SyncResult {
   try {
-    // Get today's date folder
-    const dateFolder = formatDateFolder(new Date());
-    const datePath = path.join(outputDir, dateFolder);
-
-    // Ensure date directory exists
-    if (!fs.existsSync(datePath)) {
-      fs.mkdirSync(datePath, { recursive: true });
+    // Ensure directory exists
+    if (!fs.existsSync(outputDir)) {
+      fs.mkdirSync(outputDir, { recursive: true });
     }
 
     // Filter to today's messages
@@ -147,17 +103,41 @@ export function syncToFolder(
       };
     }
 
-    // Extract project name from session path
-    const projectName = extractProjectName(sessionFilePath);
-    const outputFile = path.join(datePath, `${projectName}.md`);
+    // Calculate new messages to append
+    // This is approximate - we sync all today's messages if there are new lines
+    const today = formatDateJapanese(new Date());
+    const outputFile = path.join(outputDir, `${today}.md`);
 
-    // Format and write
-    const markdown = formatMessagesToMarkdown(messages, projectName);
-    fs.writeFileSync(outputFile, markdown);
+    // Create file with header if it doesn't exist
+    let existingContent = "";
+    if (fs.existsSync(outputFile)) {
+      existingContent = fs.readFileSync(outputFile, "utf-8");
+    } else {
+      existingContent = `# ${today} Claudeとの会話\n\n`;
+    }
+
+    // For simplicity in append mode, we rewrite with all today's messages
+    // A more sophisticated version would track individual message IDs
+    const markdown = formatMessagesToMarkdown(messages);
+    const newContent = `# ${today} Claudeとの会話\n\n${markdown}`;
+
+    fs.writeFileSync(outputFile, newContent);
 
     // Update sync state
     state.lastSyncedLines[sessionFilePath] = currentLineCount;
     saveSyncState(outputDir, state);
+
+    // Git commit if enabled
+    if (autoGitCommit) {
+      try {
+        execSync(`cd "${outputDir}" && git add "${outputFile}" && git commit -m "Claude: ${today} (auto)" 2>/dev/null`, {
+          encoding: "utf-8",
+          stdio: "pipe",
+        });
+      } catch {
+        // Git commit might fail if no changes or not a git repo - that's OK
+      }
+    }
 
     return {
       success: true,
