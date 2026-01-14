@@ -1,0 +1,163 @@
+import * as fs from "fs";
+import * as path from "path";
+import * as os from "os";
+
+export interface ClaudeMessage {
+  type: "user" | "assistant";
+  content: string;
+  timestamp: string;
+}
+
+export interface ClaudeSession {
+  filePath: string;
+  messages: ClaudeMessage[];
+  lastModified: Date;
+}
+
+// Patterns to filter out noise
+const NOISE_PATTERNS = [
+  /<local-command/i,
+  /<command-name>/i,
+  /<system-reminder>/i,
+  /<task-notification>/i,
+  /^No response requested/i,
+];
+
+function isNoiseMessage(content: string): boolean {
+  return NOISE_PATTERNS.some((pattern) => pattern.test(content));
+}
+
+function parseJsonlLine(line: string): ClaudeMessage | null {
+  try {
+    const parsed = JSON.parse(line);
+
+    if (parsed.type === "user") {
+      const content = parsed.message?.content || parsed.content || "";
+
+      if (typeof content === "string" && !isNoiseMessage(content)) {
+        return {
+          type: "user",
+          content: content.trim(),
+          timestamp: parsed.timestamp || "",
+        };
+      }
+    } else if (parsed.type === "assistant") {
+      if (Array.isArray(parsed.message?.content)) {
+        const textBlocks = parsed.message.content
+          .filter((block: { type: string; text?: string }) => block.type === "text")
+          .map((block: { type: string; text: string }) => block.text)
+          .filter((text: string) => !isNoiseMessage(text));
+
+        if (textBlocks.length > 0) {
+          return {
+            type: "assistant",
+            content: textBlocks.join("\n\n").trim(),
+            timestamp: parsed.timestamp || "",
+          };
+        }
+      }
+    }
+
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function parseSessionFile(filePath: string): ClaudeMessage[] {
+  try {
+    const content = fs.readFileSync(filePath, "utf-8");
+    const lines = content.split("\n").filter((line) => line.trim());
+
+    const messages: ClaudeMessage[] = [];
+    for (const line of lines) {
+      const message = parseJsonlLine(line);
+      if (message) {
+        messages.push(message);
+      }
+    }
+
+    return messages;
+  } catch {
+    return [];
+  }
+}
+
+export function findSessionFiles(projectPath?: string): string[] {
+  const claudeDir = path.join(os.homedir(), ".claude", "projects");
+
+  if (!fs.existsSync(claudeDir)) {
+    return [];
+  }
+
+  const sessionFiles: { path: string; mtime: Date }[] = [];
+
+  function searchDir(dir: string) {
+    try {
+      const entries = fs.readdirSync(dir, { withFileTypes: true });
+
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+
+        // Skip subagents directory
+        if (entry.name === "subagents") {
+          continue;
+        }
+
+        if (entry.isDirectory()) {
+          searchDir(fullPath);
+        } else if (entry.isFile() && entry.name.endsWith(".jsonl")) {
+          const stats = fs.statSync(fullPath);
+          // Only include files modified in the last 60 minutes and larger than 1KB
+          const sixtyMinutesAgo = new Date(Date.now() - 60 * 60 * 1000);
+          if (stats.mtime > sixtyMinutesAgo && stats.size > 1000) {
+            sessionFiles.push({ path: fullPath, mtime: stats.mtime });
+          }
+        }
+      }
+    } catch {
+      // Ignore permission errors
+    }
+  }
+
+  if (projectPath && fs.existsSync(projectPath)) {
+    searchDir(projectPath);
+  } else {
+    searchDir(claudeDir);
+  }
+
+  // Sort by modification time, newest first
+  sessionFiles.sort((a, b) => b.mtime.getTime() - a.mtime.getTime());
+
+  return sessionFiles.map((f) => f.path);
+}
+
+export function getRecentSessions(projectPath?: string, limit = 5): ClaudeSession[] {
+  const files = findSessionFiles(projectPath);
+  const sessions: ClaudeSession[] = [];
+
+  for (const filePath of files.slice(0, limit)) {
+    const messages = parseSessionFile(filePath);
+    if (messages.length > 0) {
+      const stats = fs.statSync(filePath);
+      sessions.push({
+        filePath,
+        messages,
+        lastModified: stats.mtime,
+      });
+    }
+  }
+
+  return sessions;
+}
+
+export function getTodayMessages(messages: ClaudeMessage[]): ClaudeMessage[] {
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const todayISO = today.toISOString();
+
+  return messages.filter((msg) => {
+    if (!msg.timestamp) return true; // Include messages without timestamp
+    return msg.timestamp >= todayISO;
+  });
+}
