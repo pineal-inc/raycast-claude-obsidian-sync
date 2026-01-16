@@ -6,7 +6,7 @@ CLI tool to export Claude Code conversations to Markdown files.
 
 ```bash
 # Clone and install
-git clone https://github.com/your-username/claude-log-sync.git
+git clone https://github.com/pineal-inc/claude-log-sync.git
 cd claude-log-sync
 npm install
 npm run build
@@ -66,7 +66,7 @@ You can set up a cron job or launchd to run this periodically:
 
 ## Credits
 
-Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on syncing Claude Code conversations.
+Inspired by [栗林健太郎's article](https://zenn.dev/kentaro/articles/claude-code-obsidian-sync) on exporting Claude Code conversations.
 
 ## License
 
