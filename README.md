@@ -6,8 +6,8 @@ Claude Codeの会話をMarkdownファイルにエクスポートするCLIツー�
 
 ```bash
 # クローンしてインストール
-git clone https://github.com/pineal-inc/claude-log-sync.git
-cd claude-log-sync
+git clone https://github.com/pineal-inc/tool-claude-log-sync.git
+cd tool-claude-log-sync
 npm install
 npm run build
 
